@@ -8,6 +8,7 @@
 %addpath('../cp_matrices');
 %addpath('../surfaces');
 
+useLocal = 1; % 1 - use 4x4 points, 0 - use all points
 
 %% Construct a grid in the embedding space
 
@@ -19,8 +20,6 @@ y1d = x1d;
 
 nx = length(x1d);
 ny = length(y1d);
-
-
 
 %% Find closest points on the surface
 % For each point (x,y), we store the closest point on the circle
@@ -64,7 +63,8 @@ initialu = u;       % store initial value
 disp('Constructing interpolation and laplacian matrices');
 
 E = interp2_matrix(x1d, y1d, cpxg, cpyg, p, band);
-
+[Ei,Ej,Es] = interp2_matrix(x1d,y1d,cpxg,cpyg,p,band);
+Ej = reshape(Ej,length(cpxg),(p+1)^2);
 % e.g., closest point extension:
 %u = E*u;
 
@@ -90,24 +90,44 @@ figure(3); clf;
 
 
 %% Time-stepping for the heat equation
-Tf = 1;
+Tf = 2;
 dt = 0.2*dx^2;
-numtimesteps = ceil(Tf/dt)
+numtimesteps = ceil(Tf/dt);
 % adjust for integer number of steps
-dt = Tf / numtimesteps
-[A,B] = rbf(5,cpxg,cpyg,xg,yg);
-D = B/A;
-D(1,:) = 0;
-D(end,:) = 0;
-D(1,end) = 1;
-D(end,1) = 1;
+dt = Tf / numtimesteps;
+
+% construct rbf matrix
+D = zeros(length(cpxg));
+if useLocal == 1
+    for j = 1:length(cpxg)
+        x = xg(Ej(j,:));
+        y = yg(Ej(j,:));
+        [A,B] = rbf(1,cpxg(j),cpyg(j),x,y);
+    %     D(j,Ej(j,:)) = B*pinv(A);
+        D(j,Ej(j,:)) = B/A;
+    %     [A,B] = rbf(1,cpxg(j),cpyg(j),xg,yg);
+    %     D(j,:) = B*pinv(A);
+    end
+else
+    [A,B] = rbf(1,cpxg,cpyg,xg,yg);
+    D = B*pinv(A);   
+end
+
+% D(1,:) = 0;
+% D(end,:) = 0;
+% D(1,end) = 1;
+% D(end,1) = 1;
 
 for kt = 1:numtimesteps
   % explicit Euler timestepping
   unew = u + dt*D*u;
-
+%   u = unew;
   % closest point extension
-  u = E*unew;
+  if ( mod(kt,10) == 0)
+     u = E*unew;
+  else
+     u = unew;
+  end
 
   t = kt*dt;
 
@@ -141,7 +161,7 @@ for kt = 1:numtimesteps
     title( ['error at time ' num2str(t) ', on circle'] );
     xlabel('theta'); ylabel('error');
 
-    pause(1);
+%     pause(0);
     drawnow();
   end
 end
