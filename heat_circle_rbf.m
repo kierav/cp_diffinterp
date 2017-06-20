@@ -1,3 +1,4 @@
+clear all
 %% Heat equation on a circle
 % This example solves the heat equation on a 2D circle, with initial
 % conditions u = cos(theta), and exact solution u(t) =
@@ -30,6 +31,7 @@ ny = length(y1d);
 % function cpCircle for finding the closest points on a circle
 [cpx, cpy, dist] = cpCircle(xx,yy);
 % make into vectors
+xg = xx(:); yg = yy(:);
 cpxg = cpx(:); cpyg = cpy(:);
 
 
@@ -118,6 +120,27 @@ end
 % D(1,end) = 1;
 % D(end,1) = 1;
 
+
+%%plots the stability region of FE
+%figure
+%plot(real(eig(D)),imag(eig(D)),'*')
+%pause 
+%hold on
+%z = exp(1i*pi*(0:200)/100); r = z-1;
+%plot(r/dt, 'r')
+%pause
+   
+% Trying to check our D matrix
+uexactdiff = @(theta) -1*cos(theta);
+[th1, r1] = cart2pol(cpxg,cpyg);
+ucheck = uexactdiff(th1);
+plot(th1,D*initialu,'x');
+%plot3(cpxg,cpyg, D*initialu, 'x');
+hold on;
+plot(th1,ucheck,'rx');
+%plot3(cpxg,cpyg, ucheck, 'rx');
+pause
+
 for kt = 1:numtimesteps
   % explicit Euler timestepping
   unew = u + dt*D*u;
@@ -132,15 +155,25 @@ for kt = 1:numtimesteps
   t = kt*dt;
 
   if ( (kt < 10) || (mod(kt,10) == 0) || (kt == numtimesteps) )
-    % plot over computation band
-    plot2d_compdomain(u, xg, yg, dx, dx, 1)
-    title( ['embedded domain: soln at time ' num2str(t) ...
-            ', timestep #' num2str(kt)] );
-    xlabel('x'); ylabel('y');
-    %hold on
-    plot(xp,yp,'k-', 'linewidth', 2);
-    %axis equal;  axis tight;
-
+    %% plot over computation band
+    %plot2d_compdomain(u, xg, yg, dx, dx, 1)
+    %title( ['embedded domain: soln at time ' num2str(t) ...
+    %        ', timestep #' num2str(kt)] );
+    %xlabel('x'); ylabel('y');
+    %%hold on
+    %plot(xp,yp,'k-', 'linewidth', 2);
+    %%axis equal;  axis tight;
+    %circplot = Eplot*u;
+    set(0, 'CurrentFigure', 1);
+    clf;
+    exactplot = exp(-t)*cos(th1);
+    plot3(cpxg,cpyg, u, 'x');
+    title( ['soln at time ' num2str(t) ', on circle'] );
+    %xlabel('theta'); ylabel('u');
+    hold on;
+    % plot analytic result
+    plot3(cpxg,cpyg, exactplot, 'ro');
+    
     % plot value on circle
     set(0, 'CurrentFigure', 2);
     clf;
@@ -153,7 +186,7 @@ for kt = 1:numtimesteps
     % plot analytic result
     plot(thetas, exactplot, 'r--');
     legend('explicit Euler', 'exact answer', 'Location', 'SouthEast');
-    error_circ_inf = max(abs( exactplot - circplot ))
+    error_circ_inf = max(abs( exactplot - circplot ));
 
     set(0, 'CurrentFigure', 3);
     clf;
@@ -161,7 +194,7 @@ for kt = 1:numtimesteps
     title( ['error at time ' num2str(t) ', on circle'] );
     xlabel('theta'); ylabel('error');
 
-%     pause(0);
+    %pause
     drawnow();
   end
 end
