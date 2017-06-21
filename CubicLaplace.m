@@ -1,0 +1,16 @@
+%% Derivative of cubic
+
+function [A,B] = CubicLaplace(x,y,xi,yi)
+% evaluates the 2d laplacian at (x,y) based on a cubic interpolation of...
+% the grid points (xi,yi) with data u
+% xi, yi must be 16 points
+if length(xi) ~= 16 || length(yi) ~= 16
+    error('Error: wrong size grid')
+end
+    A = [xi.^3.*yi.^3, xi.^3.*yi.^2, xi.^3.*yi, xi.^3, xi.^2.*yi.^3, ... 
+        xi.^2.*yi.^2, xi.^2.*yi, xi.^2, xi.*yi.^3, xi.*yi.^2, xi.*yi, xi, ...
+        yi.^3, yi.^2, yi, ones(length(xi),1)];
+    B = [6*x.*y.^3 + 6*x.^3.*y, 6*x.*y.^2 + 2*x.^3, 6*x.*y, 6*x, ... 
+        2*y.^3 + 6*x.^2.*y, 2*y.^2 + 2*x.^2, 2*y, 2, 6*x.*y, 2*x, 0, 0, ... 
+        6*y, 2, 0, 0];
+end
