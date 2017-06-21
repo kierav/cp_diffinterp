@@ -4,11 +4,11 @@ F = 0.054;  k = 0.063;  nu = 1/30^2;  eta = nu/3;
 f = @(u,v) (-u.*v.*v  +  F*(1-u));
 g = @(u,v) ( u.*v.*v  -  (F+k)*v);
 
-useLocal = 0; % 1 - use 4x4 points, 0 - use all points
+useLocal = 1; % 1 - use 4x4 points, 0 - use all points
 
 %% make a grid in x,y and choose a timestep
-ep = 1;
-N = 40;
+ep = .75;
+N = 80;
 dx = 4/N;
 x1d = (-2:dx:2-dx)';
 y1d = x1d;
@@ -34,8 +34,8 @@ bw = 1.0001*sqrt((dim-1)*((p+1)/2)^2 + ((order/2+(p+1)/2)^2));
 band = find(abs(dist) <= bw*dx);
 
 % store closest points in the band;
-%cpxg = cpxg(band); cpyg = cpyg(band);
-%xg = xx(band); yg = yy(band);
+cpxg = cpxg(band); cpyg = cpyg(band);
+xg = xx(band); yg = yy(band);
 
 %% initial condtions
 [u, v] = IC(xg,yg);
@@ -46,42 +46,26 @@ band = find(abs(dist) <= bw*dx);
 
 disp('Constructing interpolation and laplacian matrices');
 
-E = interp2_matrix(x1d, y1d, cpxg, cpyg, p);
-[Ei,Ej,Es] = interp2_matrix(x1d,y1d,cpxg,cpyg,p);
+E = interp2_matrix(x1d, y1d, cpxg, cpyg, p, band);
+[Ei,Ej,Es] = interp2_matrix(x1d,y1d,cpxg,cpyg,p, band);
 Ej = reshape(Ej,length(cpxg),(p+1)^2);
 
 %L = laplacian_2d_matrix(x1d,y1d, order, band);
 
 % construct rbf matrix
-D = zeros(length(cpxg));
+D = sparse(length(cpxg),length(cpxg));
 if useLocal == 1
     for j = 1:length(cpxg)
         x = xg(Ej(j,:));
         y = yg(Ej(j,:));
         [A,B] = rbf(ep,cpxg(j),cpyg(j),x,y);
-    %     D(j,Ej(j,:)) = B*pinv(A);
-        D(j,Ej(j,:)) = B/A;
+        D(j,Ej(j,:)) = B*pinv(A);
+        %D(j,Ej(j,:)) = B/A;
     end
 else
     [A,B] = rbf(ep,cpxg,cpyg,xg,yg);
     D = B*pinv(A);   
 end
-
-%%% make differentiation matrices (and identity)
-%e = ones(N, 1);
-%D = spdiags([e -2*e e], [-1 0 1], N, N);
-%D(1, N) = 1;
-%D(N, 1) = 1;
-%D = D/dx^2;
-%I = speye(N, N);
-
-%%% kronecker product "magic"
-%Dxx = kron(D, I);
-%Dyy = kron(I, D);
-
-%%% laplacian
-%L = Dxx + Dyy;
-
 
 %% time loop
 for i=1:10000
@@ -89,13 +73,28 @@ for i=1:10000
   vnew = v + dt*g(u,v) + dt*eta*(D*v);
   
   % Check any difference on the value after running for a period
-  diff = E*unew - u
+  %diff = E*unew - u
   
   u = E*unew;
   v = E*vnew;
   
+  t = i*dt;
+  
+  % plot over computation band
+  %if (i < 60) skip = 1; else skip = 20; end
+  skip = 25;
+
+  % plot every 'skip' timesteps
+  if (i==1) || (mod(i,skip) == 0)
+    plot2d_compdomain(u, xg, yg, dx, dx, 1)
+    title( ['embedded domain: soln at time ' num2str(t) ...
+            ', timestep #' num2str(i)] );
+    xlabel('x'); ylabel('y');
+    drawnow
+    %pause
+  end
   %u = Eplot*unew;
   %v = Eplot*vnew;
   
-  make_plots
+  %make_plots
 end
