@@ -74,12 +74,10 @@ L = laplacian_2d_matrix(x1d,y1d, order, band);
 
 %% Construct an interpolation matrix for plotting on circle
 
-% plotting grid on circle, using theta as a parameterization
-thetas = linspace(0,2*pi,100)';
-r = ones(size(thetas));
 % plotting grid in Cartesian coords
-[xp,yp] = pol2cart(thetas,r);
+[xp,yp] = paramCircle(64);
 xp = xp(:); yp = yp(:);
+[thetas,r] = cart2pol(xp,yp);
 Eplot = interp2_matrix(x1d, y1d, xp, yp, p, band);
 
 
@@ -96,7 +94,7 @@ numtimesteps = ceil(Tf/dt);
 dt = Tf / numtimesteps;
 
 % construct rbf matrix
-D = zeros(length(cpxg));
+D = sparse(length(cpxg),length(cpxg));
 for j = 1:length(cpxg)
     x = xg(Ej(j,:));
     y = yg(Ej(j,:));
@@ -119,7 +117,7 @@ for kt = 1:numtimesteps
   unew = u + dt*D*u;
 %   u = unew;
   % closest point extension
-  if ( mod(kt,10) == 0)
+  if ( mod(kt,1) == 0)
      u = E*unew;
   else
      u = unew;
@@ -148,8 +146,8 @@ for kt = 1:numtimesteps
     hold on;
     % plot analytic result
     plot(thetas, exactplot, 'r--');
-    legend('explicit Euler', 'exact answer', 'Location', 'SouthEast');
-    error_circ_inf = max(abs( exactplot - circplot ))
+    legend('explicit Euler','exactplot','Location', 'SouthEast');
+    error_circ_inf = max(abs( exactplot - circplot ));
 
     set(0, 'CurrentFigure', 3);
     clf;
