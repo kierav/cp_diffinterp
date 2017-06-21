@@ -1,4 +1,4 @@
-%% Heat equation on a sphere
+%% Reaction Diffusion on a sphere
 % cp_matrices is a folder of useful functions to make implementing the
 % closest point method easier. These include closest point extension
 % matrices, and differentiation matrices.
@@ -6,7 +6,9 @@
 % This example solves the heat equation on the surface of a sphere,
 % with initial conditions u = cos(4*theta)
 
-%%
+cpf = @cpSphere;
+paramf = @paramSphere;
+
 useLocal = 1; % 1 - use 4x4x4 points, 0 - use all points
 
 % 3D example on a sphere
@@ -30,7 +32,7 @@ nz = length(z1d);
 % meshgrid is only needed for finding the closest points, not afterwards
 [xx yy zz] = meshgrid(x1d, y1d, z1d);
 % function cpSphere for finding the closest points on a sphere
-[cpx, cpy, cpz, dist] = cpSphere(xx,yy,zz);
+[cpx, cpy, cpz, dist] = cpf(xx,yy,zz);
 % make into vectors
 cpxg = cpx(:); cpyg = cpy(:); cpzg = cpz(:);
 
@@ -49,21 +51,6 @@ band = find(abs(dist) <= bw*dx);
 cpxg = cpxg(band); cpyg = cpyg(band); cpzg = cpzg(band);
 xg = xx(band); yg = yy(band); zg = zz(band);
 
-
-%% Function u in the embedding space
-% u is a function defined on the grid (eg heat if solving the heat
-% equation)
-
-% assign some initial value (using initial value of cos (8*theta))
-[th, phi, r] = cart2sph(xx,yy,zz);
-u = cos(phi + pi/2);
-
-% this makes u into a vector, containing only points in the band
-u = u(band);
-
-initialu = u;       % store initial value
-
-
 %% Construct an interpolation matrix for closest point
 
 % This creates a matrix which interpolates data from the grid x1d y1d,
@@ -78,8 +65,6 @@ Ej = reshape(Ej,length(cpxg),(p+1)^3);
 %u = E*u;
 
 %% Create Laplacian matrix for heat equation
-
-
 L = laplacian_3d_matrix(x1d,y1d,z1d, order, band, band);
 
 %% construct RBF matrix
@@ -98,12 +83,6 @@ else
     D = B*pinv(A);   
 end
 
-% D(1,:) = 0;
-% D(end,:) = 0;
-% D(1,end) = 1;
-% D(end,1) = 1;
-
-
 %%plots the stability region of FE
 %figure
 %plot(real(eig(D)),imag(eig(D)),'*')
@@ -113,21 +92,10 @@ end
 %plot(r/dt, 'r')
 %pause
    
-% % Trying to check our D matrix
-% uexactdiff = @(theta) -1*cos(theta);
-% [th1, r1] = cart2pol(cpxg,cpyg);
-% ucheck = uexactdiff(th1);
-% plot(th1,D*initialu,'x');
-% %plot3(cpxg,cpyg, D*initialu, 'x');
-% hold on;
-% plot(th1,ucheck,'rx');
-% %plot3(cpxg,cpyg, ucheck, 'rx');
-% pause
-
 %% Construct an interpolation matrix for plotting on sphere
 
 % plotting grid on sphere, based on parameterization
-[xp,yp,zp] = paramSphere(64);
+[xp,yp,zp] = paramf(256);
 xp1 = xp(:); yp1 = yp(:); zp1 = zp(:);
 [th_plot, phi_plot, r] = cart2sph(xp1,yp1,zp1);
 % Eplot is a matrix which interpolations data onto the plotting grid
@@ -135,46 +103,71 @@ Eplot = interp3_matrix(x1d, y1d, z1d, xp1, yp1, zp1, p, band);
 
 figure(1); clf;
 
+%% parameters and functions for Gray--Scott
+FF = 0.054;  kk = 0.06;  nuu = 1/(3/dx)^2;  nuv = nuu/3;
+f = @(u,v) (-u.*v.*v  +  FF*(1-u));
+g = @(u,v) ( u.*v.*v  -  (FF+kk)*v);
+% nuv = 8.87*10^-4; nuu = 0.516*nuv; 
+% alpha = 0.899; beta = -0.91; gamma = -0.899;
+% tau1 = 3.5; tau2 = 0;
+% f = @(u,v) alpha*u.*(1-tau1*v.*v) + v.*(1-tau2*u);
+% g = @(u,v) beta*v.*(1+alpha*tau1/beta*u.*v) + u.*(gamma+tau2*v);
+
+%% initial conditions - small perturbation from steady state
+pert = 0.5*exp(-(10*(zg-.1)).^2) + 0.5*rand(size(xg));
+u0 = 1 - pert;  v0 = 0.5*pert;
+u = u0;  v = v0;
+u_rbf = u0; v_rbf = v0;
 
 %% Time-stepping for the heat equation
 
-Tf = 1;
-dt = 1/6*dx^2;
+Tf = 1000;
+dt = 1/6*(1/max(nuu,nuv))*dx^2;
 numtimesteps = ceil(Tf/dt);
 % adjust for integer number of steps
 dt = Tf / numtimesteps;
-tic
+
+figure(1);
+sphplot = Eplot*u;
+sphplot = reshape(sphplot, size(xp));
+Hplot = surf(xp, yp, zp, sphplot);
+title('initial u')
+xlabel('x'); ylabel('y'); zlabel('z');
+axis equal
+view(-10, 60)
+axis off;
+shading interp
+camlight left
+colorbar
+
 for kt = 1:numtimesteps
     % explicit Euler timestepping
-    unew = u + dt*(D*u);
-
+    unew = u + dt*(nuu*(L*u) + f(u,v));
+    unew_rbf = u_rbf + dt*(nuu*(D*u_rbf) + f(u_rbf,v_rbf));
+    vnew = v + dt*(nuv*(L*v) + g(u,v));
+    vnew_rbf = v_rbf + dt*(nuv*(D*v_rbf) + g(u_rbf,v_rbf));
+    
     % closest point extension
     if ( mod(kt,1) == 0)
         u = E*unew;
+        v = E*vnew;
+        u_rbf = E*unew_rbf;
+        v_rbf = E*vnew_rbf;
     else
         u = unew;
+        v = vnew;
     end
 
     t = kt*dt;
 
-    % plot value on sphere
-    if (mod(kt,100) == 0) || (kt < 10) || (kt == numtimesteps)
-      %figure(1);
-      sphplot = Eplot*u;
-
-	  err = norm(exp(-2*t)*cos(phi_plot + pi/2)-sphplot,inf) / norm(exp(-2*t)*cos(phi_plot + pi/2),inf);
-      [t dt dx err];
-
-      sphplot = reshape(sphplot, size(xp));
-      surf(xp, yp, zp, sphplot);
-      title( ['soln at time ' num2str(t) ', kt= ' num2str(kt)] );
-      xlabel('x'); ylabel('y'); zlabel('z');
-      %caxis([-1.05 1.05]);   % lock color axis
-      axis equal; shading interp;
-%      if ~exist OCTAVE_VERSION camlight left;
-      colorbar;
-      drawnow(); pause(0);
-%      end
-    end
+  if ( (mod(kt,25)==0) || (kt<=10) || (kt==numtimesteps) )
+    disp([kt t]);
+    sphplot = Eplot*u;
+    sphplot = reshape(sphplot, size(xp));
+    set(0, 'CurrentFigure', 1);
+    set(Hplot, 'CData', sphplot);
+    title( ['u at time ' num2str(t) ', kt= ' num2str(kt)] );
+    drawnow;
+  end
 end
 t_explicit = toc;
