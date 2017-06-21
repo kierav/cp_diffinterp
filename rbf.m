@@ -27,10 +27,9 @@ RBFscale= rand(length(Xctr),1)*0+ep;%
 % 
 % B = phi_del(ep,sqrt((X2i-X1i).^2+(Y2i-Y1i).^2));
 
-% Meng
+%% Meng's code
 A=matrixgen( Xctr, Xctr,[0,0,0,1], RBFscale);
 B=matrixgen( Xcol, Xctr,[1,0,0,0], RBFscale);
-%%
- 
+
 end
 

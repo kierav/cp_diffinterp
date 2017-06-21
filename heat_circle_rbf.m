@@ -11,7 +11,7 @@ clear all
 
 useLocal = 1; % 1 - use 4x4 points, 0 - use all points
 
-%% Construct a grid in the embedding space
+%% Construct a grid in the embedding spaces
 ep=1;
 dx = 0.1;                   % grid size
 
@@ -111,6 +111,7 @@ if useLocal == 1
     %     D(j,:) = B*pinv(A);
     end
 else
+
     [A,B] = rbf(ep,cpxg,cpyg,xg,yg);
     D = B*pinv(A);   
 end
