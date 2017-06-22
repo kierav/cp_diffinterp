@@ -11,7 +11,8 @@ useLocal = 1; % 1 - use 4x4x4 points, 0 - use all points
 
 % 3D example on a sphere
 % Construct a grid in the embedding space
-ep = 1;
+Er_final=[];
+for ep =.66:0.01:0.69%.65:0.05:1%0.05:0.05:1;
 dx = 0.1;                   % grid size
 
 % make vectors of x, y, positions of the grid
@@ -30,7 +31,7 @@ nz = length(z1d);
 % meshgrid is only needed for finding the closest points, not afterwards
 [xx yy zz] = meshgrid(x1d, y1d, z1d);
 % function cpSphere for finding the closest points on a sphere
-[cpx, cpy, cpz, dist] = cpTorus(xx,yy,zz);
+[cpx, cpy, cpz, dist] = cpSphere(xx,yy,zz);
 % make into vectors
 cpxg = cpx(:); cpyg = cpy(:); cpzg = cpz(:);
 
@@ -104,14 +105,7 @@ end
 % D(end,1) = 1;
 
 
-%%plots the stability region of FE
-%figure
-%plot(real(eig(D)),imag(eig(D)),'*')
-%pause 
-%hold on
-%z = exp(1i*pi*(0:200)/100); r = z-1;
-%plot(r/dt, 'r')
-%pause
+
    
 % % Trying to check our D matrix
 % uexactdiff = @(theta) -1*cos(theta);
@@ -127,13 +121,12 @@ end
 %% Construct an interpolation matrix for plotting on sphere
 
 % plotting grid on sphere, based on parameterization
-[xp,yp,zp] = paramTorus(64);
+[xp,yp,zp] = paramSphere(64);
 xp1 = xp(:); yp1 = yp(:); zp1 = zp(:);
 [th_plot, phi_plot, r] = cart2sph(xp1,yp1,zp1);
 % Eplot is a matrix which interpolations data onto the plotting grid
 Eplot = interp3_matrix(x1d, y1d, z1d, xp1, yp1, zp1, p, band);
 
-figure(1); clf;
 
 
 %% Time-stepping for the heat equation
@@ -143,13 +136,21 @@ dt = 1/6*dx^2;
 numtimesteps = ceil(Tf/dt);
 % adjust for integer number of steps
 dt = Tf / numtimesteps;
+%plots the stability region of FE
+figure(2);clf;
+plot(real(eigs(D)),imag(eigs(D)),'*')
+%pause 
+hold on
+z = exp(1i*pi*(0:200)/100); r = z-1;
+plot(r/dt, 'r')
+%pause
 tic
 for kt = 1:numtimesteps
     % explicit Euler timestepping
     unew = u + dt*(D*u);
 
     % closest point extension
-    if ( mod(kt,1) == 0)
+    if ( mod(kt,5) == 0)
         u = E*unew;
     else
         u = unew;
@@ -163,18 +164,27 @@ for kt = 1:numtimesteps
       sphplot = Eplot*u;
 
 	  err = norm(exp(-2*t)*cos(phi_plot + pi/2)-sphplot,inf) / norm(exp(-2*t)*cos(phi_plot + pi/2),inf);
-      [t dt dx err];
+      [t dt dx err]
 
       sphplot = reshape(sphplot, size(xp));
+      figure(1); clf;
       surf(xp, yp, zp, sphplot);
       title( ['soln at time ' num2str(t) ', kt= ' num2str(kt)] );
       xlabel('x'); ylabel('y'); zlabel('z');
       %caxis([-1.05 1.05]);   % lock color axis
       axis equal; shading interp;
 %      if ~exist OCTAVE_VERSION camlight left;
+      colormap(jet);
       colorbar;
-      drawnow(); pause(0);
+      drawnow();% pause(0);
 %      end
     end
 end
 t_explicit = toc;
+Er_final=[Er_final,err];
+end
+figure
+semilogy(ep,Er_final,'.')
+title('Using IMQ for heat equ on Sphere')
+xlabel('\epsilon')
+ylabel('error')
