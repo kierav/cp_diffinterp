@@ -1,7 +1,6 @@
 %% 2d RBF generator
 
 function [A,B, Ae] = rbf3d(ep,x,y,z,xi,yi,zi)
-%TODO: check xi and yi are the same length
 %x,y : collocation points ; xi,yi : centers
 global RBFtype; 
 global RBFscale

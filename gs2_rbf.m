@@ -16,7 +16,7 @@ dt = 1/2;
 [xx, yy] = meshgrid(x1d, y1d);
 
 %% closest point function
-[cpx,cpy,dist] = cpCircle(xx, yy);
+[cpx,cpy,dist] = cpBeanCurve(xx, yy);
 cpx = cpx(:);
 cpy = cpy(:);
 % make into vectors
@@ -90,6 +90,7 @@ for i=1:10000
     title( ['embedded domain: soln at time ' num2str(t) ...
             ', timestep #' num2str(i)] );
     xlabel('x'); ylabel('y');
+    colormap(jet);
     drawnow
     %pause
   end
