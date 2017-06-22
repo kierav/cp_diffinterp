@@ -1,4 +1,4 @@
-%% Reaction Diffusion on a sphere
+%% Reaction Diffusion on a 3D surface
 % cp_matrices is a folder of useful functions to make implementing the
 % closest point method easier. These include closest point extension
 % matrices, and differentiation matrices.
@@ -6,14 +6,14 @@
 % This example solves the heat equation on the surface of a sphere,
 % with initial conditions u = cos(4*theta)
 
-cpf = @cpSphere;
-paramf = @paramSphere;
+cpf = @cpTorus;
+paramf = @paramTorus;
 
 useLocal = 1; % 1 - use 4x4x4 points, 0 - use all points
 
 % 3D example on a sphere
 % Construct a grid in the embedding space
-ep = 1;
+ep = 0.85;
 dx = 0.1;                   % grid size
 
 % make vectors of x, y, positions of the grid
@@ -114,7 +114,7 @@ g = @(u,v) ( u.*v.*v  -  (FF+kk)*v);
 % g = @(u,v) beta*v.*(1+alpha*tau1/beta*u.*v) + u.*(gamma+tau2*v);
 
 %% initial conditions - small perturbation from steady state
-pert = 0.5*exp(-(10*(zg-.1)).^2) + 0.5*rand(size(xg));
+pert = 0.5*exp(-(10*(yg-.1)).^2) + 0.5*rand(size(xg));
 u0 = 1 - pert;  v0 = 0.5*pert;
 u = u0;  v = v0;
 u_rbf = u0; v_rbf = v0;
@@ -131,13 +131,22 @@ figure(1);
 sphplot = Eplot*u;
 sphplot = reshape(sphplot, size(xp));
 Hplot = surf(xp, yp, zp, sphplot);
-title('initial u')
+title('CPM - initial u')
 xlabel('x'); ylabel('y'); zlabel('z');
 axis equal
 view(-10, 60)
 axis off;
 shading interp
-camlight left
+colorbar
+
+figure(2)
+Rplot = surf(xp,yp,zp,reshape(Eplot*u_rbf,size(xp)));
+title('RBF - initial u')
+xlabel('x'); ylabel('y'); zlabel('z');
+axis equal
+view(-10, 60)
+axis off;
+shading interp
 colorbar
 
 for kt = 1:numtimesteps
@@ -160,13 +169,17 @@ for kt = 1:numtimesteps
 
     t = kt*dt;
 
-  if ( (mod(kt,25)==0) || (kt<=10) || (kt==numtimesteps) )
+  if ( (mod(kt,50)==0) || (kt<=10) || (kt==numtimesteps) )
     disp([kt t]);
     sphplot = Eplot*u;
     sphplot = reshape(sphplot, size(xp));
     set(0, 'CurrentFigure', 1);
     set(Hplot, 'CData', sphplot);
-    title( ['u at time ' num2str(t) ', kt= ' num2str(kt)] );
+    title( ['CPM - time ' num2str(t) ', kt= ' num2str(kt)] );
+    figure(2)
+    set(Rplot,'CData',reshape(Eplot*u_rbf,size(xp)));
+    title(['RBF - time ' num2str(t)]);
+    pause;
     drawnow;
   end
 end

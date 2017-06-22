@@ -6,8 +6,8 @@ function [A,B, Ae] = rbf3d(ep,x,y,z,xi,yi,zi)
 global RBFtype; 
 global RBFscale
 global RBFpar; 
-RBFtype='g' ;%see frbf.m
-RBFpar=1;%7-1/2;%it works for 'ms'  % Matern/Sobolev (msorder-2/2;)
+RBFtype='mq' ;%see frbf.m
+RBFpar=-1;%7-1/2;%it works for 'ms'  % Matern/Sobolev (msorder-2/2;)
 [X1,X2] = meshgrid(xi);
 [Y1,Y2] = meshgrid(yi);
 [Z1,Z2] = meshgrid(zi);
